@@ -1,0 +1,12 @@
+redis
+numpy
+docker
+flask
+pandas
+deap
+matplotlib
+redis
+scipy
+optuna
+requests
+pyqt5

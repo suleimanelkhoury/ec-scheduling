@@ -1,0 +1,35 @@
+services:
+  redis:
+    image: redis
+    container_name: redis
+    ports:
+      - "6379:6379"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: "1G"
+    restart: always
+    networks:
+      - mynetwork
+
+  ec-scheduler:
+    image: ec-scheduler
+    container_name: ec-scheduler
+    ports:
+      - "8072:8072"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: "1G"
+    restart: always
+    privileged: true
+    networks:
+      - mynetwork
+
+networks:
+  mynetwork:
+    driver: bridge
