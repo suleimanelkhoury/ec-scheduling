@@ -9,6 +9,8 @@ ADD NSGA2.py /NSGA2.py
 ADD PSO.py /PSO.py
 ADD CMAES.py /CMAES.py
 ADD Strategy.py /Strategy.py
+ADD ea_utils.py /ea_utils.py
+ADD container_handling.py /container_handling.py
 ADD main.py /main.py
 ADD configuration.py /configuration.py
 ADD genotyp_phenotyp.py /genotyp_phenotyp.py

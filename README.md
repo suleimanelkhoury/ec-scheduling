@@ -5,10 +5,15 @@
 Welcome to **EC-Scheduler**! This project provides a comprehensive solution for optimizing and scheduling general energy resources. It consists of three main components:
 
 1. **Optimization Method (`ec-scheduler`)**:
-   This component implements various evolutionary computing methods for optimizing energy scheduling using the DEAP (Distributed Evolutionary Algorithms in Python) library. It includes:
-   - **NSGA2 (Non-dominated Sorting Genetic Algorithm II)**
-   - **PSO (Particle Swarm Optimization)**
-   - **CMAES (Covariance Matrix Adaptation Evolution Strategy)**
+   This part of our work implements three various evolutionary algorithms using the DEAP (Distributed Evolutionary Algorithms in Python) library. It includes:
+   - **`NSGA2.py`** : Non-dominated Sorting Genetic Algorithm II.
+   - **`PSO.py`** : Particle Swarm Optimization.
+   - **`CMAES.py`** : Covariance Matrix Adaptation Evolution Strategy.
+   - **`ea_utils.py`**: This file contains the helper, statistics, plotting, and parallelization functionalities for each evolutionary algorithms.
+   - **`Strategy.py`**: This file contains the strategy logic for generating and updating the population in CMA-ES.
+   - **`genotyp_phenotyp.py`**: This file contains logic used to convert chromosomes into the corresponding scheduling plans, and send and receive the values to and from the Mockup Scheduler.
+   - **`main.py`**: This file contains the main Flask app for the project.
+   - **`container_handling.py`**: This file contains the logic for handling the containers on the IAI cluster using Kubernetes.
 
 2. **Mockup Scheduler (`mockup_scheduler`)**:
    This component simulates the scheduling of five different types of energy facilities:

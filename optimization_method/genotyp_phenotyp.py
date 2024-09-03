@@ -1,19 +1,39 @@
-# TODO: Reset setting between optimizations
-# TODO: receive date from experiment
-# TODO: setters and getters (unit_id, start_time, duration, power_fraction)
 import time
 import json
 import redis
 import warnings
-import math
 import numpy as np
 from scipy.optimize import curve_fit, OptimizeWarning
 import concurrent.futures
 
+
 # Define an exponential function
 def exponential_function(x, a, b, c):
     return a * np.exp(b * x) + c
+
+
 class ResourcePlan:
+    """
+    Represents the resource plan for a specific facility within a scheduling plan.
+
+    Attributes:
+    - resource_id (int): The identifier for the resource.
+    - power_generation (list): A list representing the power generation fractions over time.
+
+    Methods:
+    - get_resource_id():
+        Returns the identifier of the facility.
+
+    - set_resource_id(resource_id):
+        Sets the identifier of the facility.
+
+    - get_power_fraction():
+        Returns the power generation fractions for the facility.
+
+    - set_power_fraction(power_fraction):
+        Sets the power generation fractions for the facility.
+    """
+
     def __init__(self):
         self.resource_id = 0
         self.power_generation = []
@@ -32,6 +52,24 @@ class ResourcePlan:
 
 
 class SchedulingPlan:
+    """
+    Represents a scheduling plan consisting of resource plans for the different facilities.
+
+    Attributes:
+    - plan_id (int): The identifier for the scheduling plan.
+    - nr_of_genes (int): The number of genes (tasks) in the scheduling plan.
+    - resource_plan (ResourcePlan): The resource plan for the facilities associated with this scheduling plan.
+
+    Methods:
+    - get_plan_id(): Returns the identifier of the scheduling plan.
+    - set_plan_id(plan_id): Sets the identifier of the scheduling plan.
+    - get_resource_plan(): Returns the resource plan for the facilities associated with the scheduling plan.
+    - print_resource_plan(): Prints the resource plan details (resource ID and power fraction).
+    - set_resource_plan(resource_plan): Sets the resource plan for the facilities.
+    - get_nr_of_genes(): Returns the number of genes in the scheduling plan.
+    - set_nr_of_genes(nr_of_genes): Sets the number of genes in the scheduling plan.
+    """
+
     def __init__(self):
         self.plan_id = 0
         self.nr_of_genes = 0
@@ -63,18 +101,48 @@ class SchedulingPlan:
 
 # Main class for interpreting the chromosomes incoming from algorithm_logic
 class GenotypPhenotyp:
+    """
+    Converts a list of chromosomes into a corresponding list of scheduling plans, sends them for evaluation to EMS,
+    receives the evaluation values from EMS, and returns them to the algorithm_logic.
+
+    Methods:
+    - interpretation(chromosome_list, microservice_index):
+        Interprets a list of chromosomes, converts them to scheduling plans, sorts the results, and returns the
+        evaluation values.
+
+    - save_chromosome_to_file(chromosome, file_path):
+        Appends a chosen chromosome to a specified file.
+
+    - add_chromosome_id(chromosome_list):
+        Adds a unique identifier to each chromosome in a list.
+
+    - process_chromosome(chromosome):
+        Processes a single chromosome to create a scheduling plan, updating the power fraction values based on the
+        gene information.
+
+    - set_power_fraction_inside(power_fr, start, end, pf, res_id):
+        Sets the power fraction for a specific time range within the resource plan.
+
+    - update_power_fraction_values(list_resource_plan, chromosome_genes):
+        Updates the power fraction values inside the schedule based on the gene information.
+
+    - sort_results(results):
+        Sorts the interpreted scheduling plans into a format accepted by the EMS.
+
+    - publish_ea_epoch_config(schedule, microservice_index):
+        Publishes the scheduling plan to the EMS via Redis for evaluation.
+
+    - calculate_exponential_value(x):
+        Calculates an exponential value based on the predefined exponential function.
+
+    - receive_value_from_redis(key):
+        Waits for and retrieves evaluation values from Redis.
+
+    - save_schedule_to_file(list_of_scheduling_plans, file_path):
+        Appends a chosen schedule to a specified file.
+    """
 
     redis_client = redis.StrictRedis(host='redis', port=6379)
-
-    # Main function that is called in DEAP main
-    def main(self, chromosome_list, microservice_index):
-        #start = round(time.time() * 1000)
-
-        evaluation_values_list = self.interpretation(self, chromosome_list, microservice_index)
-
-        #end = round(time.time() * 1000)
-        #print("Time Conversion Genotype Phenotype: ", end - start, "ms")
-        return evaluation_values_list
 
     # Main functionality for the whole population of chromosomes
     def interpretation(self, chromosome_list, microservice_index):
@@ -85,12 +153,13 @@ class GenotypPhenotyp:
         if num_chromosomes == 1:
             self.save_chromosome_to_file(self, chromosome_list, "/chosen_chromosomes_and_schedules.txt")
 
-        chromosome_list_with_ids = self.add_chromosome_id(self,chromosome_list)
+        chromosome_list_with_ids = self.add_chromosome_id(self, chromosome_list)
 
         # Main interpretation functionality parallelized
         with concurrent.futures.ThreadPoolExecutor() as executor:
             # Submit each chromosome to the ThreadPoolExecutor
-            futures = [executor.submit(self.process_chromosome, self, chromosome) for chromosome in chromosome_list_with_ids]
+            futures = [executor.submit(self.process_chromosome, self, chromosome) for chromosome in
+                       chromosome_list_with_ids]
             # Wait for all tasks to complete
             concurrent.futures.wait(futures)
             results = [future.result() for future in futures]
@@ -106,7 +175,7 @@ class GenotypPhenotyp:
             """
 
         formated_schedule = self.sort_results(self, results)
-        #print(formated_schedule)
+        # print(formated_schedule)
 
         # Publish EA epoch configuration with microservice_index
         self.publish_ea_epoch_config(self, formated_schedule, microservice_index)
@@ -147,7 +216,6 @@ class GenotypPhenotyp:
         chromosome_genes = chromosome[:-1]
 
         for gene in chromosome_genes:
-
             # Extract the unit ID from the gene
             unit_id = gene[0]
             number_of_genes += 1
@@ -213,15 +281,15 @@ class GenotypPhenotyp:
         # Redis topic name
         topic_name = f"algorithm.EA.epoch.{microservice_index}"
 
+        # cleans the topic "proof.result.1" and "algorithm.EA.epoch.1" so it doesn't receive an old value
+        self.redis_client.delete(f"proof.result.{microservice_index}")
+
         # Publish to Redis channel
         schedule_json = json.dumps(schedule)
         self.redis_client.publish(topic_name, schedule_json)
-        #print(f"Published Scheduling plan to EMS Channel: {topic_name}")
+        # print(f"Published Scheduling plan to EMS Channel: {topic_name}")
 
-    # Define the exponential function
-    def exponential_function(self, x, a, b, c):
-        return a * np.exp(b * x) + c
-
+    # Calculate the exponential value for a given x
     def calculate_exponential_value(self, x):
         # Define the three predefined points
         x_data = np.array([0.0, 0.67, 1.0])
@@ -244,17 +312,17 @@ class GenotypPhenotyp:
             time.sleep(1)  # Adjust the sleep time as needed
             received_value = self.redis_client.get(key)
         # Split the lines and extract (degree_of_fulfillment, root_mean_square_deviation)
-        evaluation_results = received_value.decode('utf-8') #convert bytes into strings to process every new line as a value
+        evaluation_results = received_value.decode(
+            'utf-8')  # convert bytes into strings to process every new line as a value
         # result_tuples = [(1.0 - float(line.split()[1]), float(line.split()[0])) for line in evaluation_results.strip().split('\n')]
         result_tuples = [
             (self.calculate_exponential_value(self, 1.0 - float(line.split()[1])),
-             self.calculate_exponential_value(self, 1.0 - float(line.split()[0])),
+             self.calculate_exponential_value(self, float(line.split()[0])),
              float(line.split()[1]),
              float(line.split()[0]))
             for line in evaluation_results.strip().split('\n')
         ]
-        # cleans the topic "proof.result.1" and "algorithm.EA.epoch.1" so it doesn't receive an old value
-        self.redis_client.delete(key)
+        # print("result_tuples: ", result_tuples)
         return result_tuples
 
     # Appends the chosen schedule every day to a file
@@ -266,35 +334,3 @@ class GenotypPhenotyp:
                     f"Schedule Plan ID: {scheduling_plan.get_plan_id()}, "
                     f"Number Of Genes: {scheduling_plan.get_nr_of_genes()}, "
                     f"Resource plan: {scheduling_plan.print_resource_plan()}\n")
-
-    # a mockup main for testing
-    def main_test(self, chromosome_list, microservice_index):
-        start = round(time.time() * 1000)
-        evaluation_values_list = []
-        #print(microservice_index)
-        for chromosome in chromosome_list:
-            evaluation_max, evaluation_min = self.evaluate(self, chromosome)
-            evaluation_values_list.append((evaluation_max,evaluation_min,evaluation_max/2, evaluation_min/2))
-        #print("result_tuples: ", evaluation_values_list)
-        end = round(time.time() * 1000)
-        #print("Time Conversion Genotype Phenotype: ", end - start, "ms")
-        return evaluation_values_list
-    # a mock up evaluate class to replace EMS
-    def evaluate(self, individual):
-        total_fitness_max = 0.0
-        total_fitness_min = float('inf')  # Initialize with positive infinity for minimization
-
-        for gene in individual:
-            # Assuming gene has the format (unit_id, start_time, duration, power_fraction)
-            unit_id, start_time, duration, power_fraction = gene
-
-            # Your evaluation logic for each gene, modify as needed
-            gene_fitness_max = unit_id * start_time * duration * power_fraction
-            gene_fitness_min = unit_id + start_time + duration + power_fraction
-
-            total_fitness_max += gene_fitness_max
-            total_fitness_min = min(total_fitness_min, gene_fitness_min)
-
-        average_fitness_max = total_fitness_max / (len(individual) * 150)
-        average_fitness_min = total_fitness_min / (len(individual) * 150) *1000
-        return average_fitness_max, average_fitness_min
