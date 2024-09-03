@@ -43,15 +43,15 @@ def cost_objective(all_power_generations):
     # all_power_generations is a 2D array: rows are resources, columns are power generation values
 
     # PVs (assuming they are the first resource)
-    pv_schedule = all_power_generations[0]
+    pv_schedule = all_power_generations[0] if len(all_power_generations) > 4 else [0] * 96
     cost += np.sum(pv_schedule) * COST_PV
 
     # WTs (assuming they are the second resource)
-    wt_schedule = all_power_generations[1]
+    wt_schedule = all_power_generations[1] if len(all_power_generations) > 4 else [0] * 96
     cost += np.sum(wt_schedule) * COST_WT
 
     # Battery1 (assuming it is the third resource)
-    battery1_schedule = all_power_generations[2]
+    battery1_schedule = all_power_generations[2] if len(all_power_generations) > 4 else [0] * 96
     for power in battery1_schedule:
         if power < 0:  # Discharging
             cost += power * COST_BATTERY_DISCHARGE
@@ -59,7 +59,7 @@ def cost_objective(all_power_generations):
             cost += power * COST_BATTERY_CHARGE
 
     # Battery2 (assuming it is the fourth resource)
-    battery2_schedule = all_power_generations[3]
+    battery2_schedule = all_power_generations[3] if len(all_power_generations) > 4 else [0] * 96
     for power in battery2_schedule:
         if power < 0:  # Discharging
             cost += power * COST_BATTERY_DISCHARGE
@@ -67,7 +67,7 @@ def cost_objective(all_power_generations):
             cost += power * COST_BATTERY_CHARGE
 
     # CHP (assuming it is the fifth resource)
-    chp_schedule = all_power_generations[4]
+    chp_schedule = all_power_generations[4] if len(all_power_generations) > 4 else [0] * 96
     cost += np.sum(chp_schedule) * COST_CHP
 
     return cost

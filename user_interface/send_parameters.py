@@ -6,6 +6,7 @@ def send_data(
     number_of_islands,
     number_of_generations,
     date,
+    choice,
     url='http://127.0.0.1:8072/run'  # Default URL, can be changed if needed
 ):
     # Define the JSON data to be sent
@@ -14,6 +15,7 @@ def send_data(
         "numberOfIslands": [number_of_islands],
         "numberrOfGeneration": [number_of_generations],
         "date": date,
+        "choice": choice,
     }
 
     # Send the POST request
@@ -25,8 +27,9 @@ def send_data(
 
 # Example usage:
 send_data(
-    population_size=100,
+    population_size=25,
     number_of_islands=1,
     number_of_generations=50,
     date="2022-04-11",
+    choice="NSGA2",
 )

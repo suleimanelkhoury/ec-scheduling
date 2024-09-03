@@ -44,12 +44,13 @@ class DataSenderWorker(QObject):
     finished = pyqtSignal(str)
     error = pyqtSignal(str)
 
-    def __init__(self, population_size, number_of_islands, number_of_generations, date):
+    def __init__(self, population_size, number_of_islands, number_of_generations, date, choice):
         super().__init__()
         self.population_size = population_size
         self.number_of_islands = number_of_islands
         self.number_of_generations = number_of_generations
         self.date = date
+        self.choice = choice
 
     def run(self):
         try:
@@ -59,7 +60,8 @@ class DataSenderWorker(QObject):
                     "populationSize": [int(self.population_size)],
                     "numberOfIslands": [int(self.number_of_islands)],
                     "numberrOfGeneration": [int(self.number_of_generations)],
-                    "date": self.date
+                    "date": self.date,
+                    "choice": self.choice
                 }
             )
             response_json = response.json()
@@ -86,11 +88,13 @@ class App(QMainWindow):
         self.number_of_islands_input = QLineEdit()
         self.number_of_generations_input = QLineEdit()
         self.date_input = QLineEdit()
+        self.choice_input = QLineEdit()
 
         self.form_layout.addRow('Population Size:', self.population_size_input)
         self.form_layout.addRow('Number of Islands:', self.number_of_islands_input)
         self.form_layout.addRow('Number of Generations:', self.number_of_generations_input)
         self.form_layout.addRow('Date:', self.date_input)
+        self.form_layout.addRow('Choice:', self.choice_input)
 
         self.send_button = QPushButton('Send Data')
         self.send_button.clicked.connect(self.handle_send_data)
@@ -146,10 +150,11 @@ class App(QMainWindow):
         number_of_islands = self.number_of_islands_input.text()
         number_of_generations = self.number_of_generations_input.text()
         date = self.date_input.text()
+        choice = self.choice_input.text()
 
         if self.data_sender_worker:
             self.data_sender_worker.deleteLater()
-        self.data_sender_worker = DataSenderWorker(population_size, number_of_islands, number_of_generations, date)
+        self.data_sender_worker = DataSenderWorker(population_size, number_of_islands, number_of_generations, date, choice)
         self.data_sender_worker.moveToThread(self.data_sender_thread)
 
         self.data_sender_worker.finished.connect(self.on_data_sent)
